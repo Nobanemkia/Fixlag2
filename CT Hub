@@ -1,18 +1,20 @@
 repeat task.wait() until game:IsLoaded()
-print("🌪️ CTHub SuperCleaner v17 khởi động... (Realtime Auto Clean)")
+print("🎆 CTHub SuperCleaner v18 — xoá farm khác, pet, weather, firework (JulyAssets) realtime")
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
 local FarmFolder = Workspace:FindFirstChild("Farm")
 local PetsFolder = Workspace:FindFirstChild("PetsPhysical")
 local Terrain = Workspace:FindFirstChild("Terrain")
 local WeatherVisuals = Workspace:FindFirstChild("WeatherVisuals")
+local JulyAssets = ReplicatedStorage:FindFirstChild("Assets") and ReplicatedStorage.Assets:FindFirstChild("JulyAssets")
 
 --------------------------------------------------------
--- ✅ Safe destroy (chống lỗi)
+-- ✅ Safe destroy helper
 --------------------------------------------------------
 local function safeDestroy(obj)
 	pcall(function()
@@ -21,7 +23,7 @@ local function safeDestroy(obj)
 end
 
 --------------------------------------------------------
--- 🌾 Xác định farm chính của bạn
+-- 🌾 Find your farm (Owner)
 --------------------------------------------------------
 local function getMyFarm()
 	if not FarmFolder then return nil end
@@ -39,19 +41,26 @@ local function getMyFarm()
 end
 
 --------------------------------------------------------
--- 💨 Xoá farm người khác
+-- 🧨 Xoá firework và asset event (JulyAssets)
 --------------------------------------------------------
-local function removeOtherFarms(myFarm)
-	if not FarmFolder then return end
-	for _, farm in ipairs(FarmFolder:GetChildren()) do
-		if farm ~= myFarm then
-			safeDestroy(farm)
+local function removeFireworks()
+	if not JulyAssets then return end
+	for _, v in ipairs(JulyAssets:GetDescendants()) do
+		local n = v.Name:lower()
+		if n:find("firework") or n:find("spark") or n:find("explosion")
+		or n:find("trail") or n:find("smoke") or n:find("flash")
+		or n:find("blast") then
+			safeDestroy(v)
+		elseif v:IsA("ParticleEmitter") or v:IsA("Trail")
+		or v:IsA("Beam") or v:IsA("Smoke") or v:IsA("Fire")
+		or v:IsA("Sparkles") or v:IsA("Explosion") then
+			safeDestroy(v)
 		end
 	end
 end
 
 --------------------------------------------------------
--- 🐾 Xoá toàn bộ pet (của bạn & người khác)
+-- 🐾 Remove all pets
 --------------------------------------------------------
 local function removeAllPets()
 	if not PetsFolder then return end
@@ -61,8 +70,41 @@ local function removeAllPets()
 end
 
 --------------------------------------------------------
--- 🥚 Giữ lại trứng farm bạn, xoá object khác
+-- 🌩️ Remove weather
 --------------------------------------------------------
+local function removeWeather()
+	if WeatherVisuals then safeDestroy(WeatherVisuals) end
+	if Terrain then
+		local targets = {
+			"BigPopEffect","MediumPopEffect","PopEffect",
+			"Rain","Fog","Snow","Lightning","Storm"
+		}
+		for _, name in ipairs(targets) do
+			local fx = Terrain:FindFirstChild(name)
+			if fx then safeDestroy(fx) end
+		end
+		for _, obj in ipairs(Terrain:GetDescendants()) do
+			local n = obj.Name:lower()
+			if n:find("rain") or n:find("fog") or n:find("snow") or n:find("lightning")
+			or n:find("storm") or n:find("pop") or obj:IsA("ParticleEmitter")
+			or obj:IsA("Beam") or obj:IsA("Trail") or obj:IsA("Smoke")
+			or obj:IsA("Fire") or obj:IsA("Sparkles") then
+				safeDestroy(obj)
+			end
+		end
+	end
+end
+
+--------------------------------------------------------
+-- 💨 Remove other farms, clean your farm
+--------------------------------------------------------
+local function removeOtherFarms(myFarm)
+	if not FarmFolder then return end
+	for _, farm in ipairs(FarmFolder:GetChildren()) do
+		if farm ~= myFarm then safeDestroy(farm) end
+	end
+end
+
 local function cleanMyFarm(myFarm)
 	if not myFarm then return end
 	local imp = myFarm:FindFirstChild("Important")
@@ -71,9 +113,7 @@ local function cleanMyFarm(myFarm)
 	if not obj then return end
 
 	for _, item in ipairs(obj:GetChildren()) do
-		if item.Name ~= "PetEgg" then
-			safeDestroy(item)
-		end
+		if item.Name ~= "PetEgg" then safeDestroy(item) end
 	end
 
 	local egg = obj:FindFirstChild("PetEgg")
@@ -88,35 +128,7 @@ local function cleanMyFarm(myFarm)
 end
 
 --------------------------------------------------------
--- 🌩️ Xoá thời tiết, effect, pop
---------------------------------------------------------
-local function removeWeather()
-	if WeatherVisuals then safeDestroy(WeatherVisuals) end
-
-	if Terrain then
-		local targets = {
-			"BigPopEffect","MediumPopEffect","PopEffect",
-			"Rain","Fog","Snow","Lightning","Storm"
-		}
-		for _, name in ipairs(targets) do
-			local fx = Terrain:FindFirstChild(name)
-			if fx then safeDestroy(fx) end
-		end
-
-		for _, obj in ipairs(Terrain:GetDescendants()) do
-			local n = obj.Name:lower()
-			if n:find("rain") or n:find("fog") or n:find("snow") or n:find("lightning")
-			or n:find("storm") or n:find("pop") or obj:IsA("ParticleEmitter")
-			or obj:IsA("Beam") or obj:IsA("Trail") or obj:IsA("Smoke")
-			or obj:IsA("Fire") or obj:IsA("Sparkles") then
-				safeDestroy(obj)
-			end
-		end
-	end
-end
-
---------------------------------------------------------
--- 🎨 Giảm đồ họa cực mạnh
+-- 🎨 Reduce graphics
 --------------------------------------------------------
 local function reduceGraphics()
 	pcall(function()
@@ -140,7 +152,7 @@ local function reduceGraphics()
 end
 
 --------------------------------------------------------
--- 🔁 Vòng lặp realtime auto clean
+-- 🔁 Realtime loop auto-clean
 --------------------------------------------------------
 task.spawn(function()
 	while task.wait(3) do
@@ -148,6 +160,7 @@ task.spawn(function()
 		reduceGraphics()
 		removeAllPets()
 		removeWeather()
+		removeFireworks()
 		if myFarm then
 			removeOtherFarms(myFarm)
 			cleanMyFarm(myFarm)
@@ -156,15 +169,16 @@ task.spawn(function()
 end)
 
 --------------------------------------------------------
--- 🏁 Khởi động lần đầu
+-- 🏁 First run
 --------------------------------------------------------
 local myFarm = getMyFarm()
 reduceGraphics()
 removeAllPets()
 removeWeather()
+removeFireworks()
 if myFarm then
 	removeOtherFarms(myFarm)
 	cleanMyFarm(myFarm)
 end
 
-print("✅ CTHub SuperCleaner v17: realtime active — chỉ giữ farm của bạn, trứng của bạn, mọi thứ khác auto xoá.")
+print("✅ CTHub SuperCleaner v18: realtime full clean — giữ farm bạn + PetEgg, xoá pet, weather, fireworks, effects.")
