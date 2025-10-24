@@ -1,20 +1,17 @@
 repeat task.wait() until game:IsLoaded()
-print("🌪️ CTHub SuperCleaner v14 khởi động... (Full: Farm, Plants, Pet, Mutation, Trait, Weather, Pop)")
+print("🌪️ CTHub SuperCleaner v16 khởi động... (Only your farm remains)")
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
-local FarmFolder = Workspace:WaitForChild("Farm")
+local FarmFolder = Workspace:FindFirstChild("Farm")
 local PetsFolder = Workspace:FindFirstChild("PetsPhysical")
 local Terrain = Workspace:FindFirstChild("Terrain")
 local WeatherVisuals = Workspace:FindFirstChild("WeatherVisuals")
 
---------------------------------------------------------
--- 🧱 Safe destroy
---------------------------------------------------------
+-- ✅ Safe destroy để không lỗi
 local function safeDestroy(obj)
 	pcall(function()
 		if obj and obj.Parent then obj:Destroy() end
@@ -22,7 +19,7 @@ local function safeDestroy(obj)
 end
 
 --------------------------------------------------------
--- 🌾 Tìm farm của bạn
+-- 🌾 Tìm farm của bạn qua Owner
 --------------------------------------------------------
 local function getMyFarm()
 	for _, farm in ipairs(FarmFolder:GetChildren()) do
@@ -39,201 +36,10 @@ local function getMyFarm()
 end
 
 --------------------------------------------------------
--- 💨 Xoá effect (Particle/Beam/Fire/Smoke/etc)
+-- 💨 Xoá tất cả farm khác
 --------------------------------------------------------
-local function clearEffectsIn(obj)
-	for _, v in ipairs(obj:GetDescendants()) do
-		if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam")
-			or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Explosion")
-			or v:IsA("Sparkles") then
-			safeDestroy(v)
-		end
-	end
-end
-
---------------------------------------------------------
--- ⚗️ Mutation Effect List
---------------------------------------------------------
-local mutationKeywords = {
-	"Rainbow","Golden","Shiny","Radiant","Soulflame","Spectral","Frozen",
-	"Corrupted","Aromatic","Windy","Mega","Tiny","Inverted","IronSkin",
-	"Ascended","Tranquil","Fried","Dreadbound","Nightmare","Luminous","Glimmering"
-}
-
-local function clearMutationVisuals(pet)
-	for _, v in ipairs(pet:GetDescendants()) do
-		for _, keyword in ipairs(mutationKeywords) do
-			if string.find(string.lower(v.Name), string.lower(keyword)) then
-				safeDestroy(v)
-			end
-		end
-	end
-end
-
---------------------------------------------------------
--- 🧩 Trait Groups (from PetTraitsData)
---------------------------------------------------------
-local traitGroups = {
-	Dinosaur = {"Raptor","Triceratops","T-Rex","Spinosaurus","Brontosaurus"},
-	Food = {"Bagel Bunny","Sushi Bear","Bacon Pig","Hotdog Daschund","Lobster Thermidor"},
-	Fall = {"Red Panda","Robin","Grizzly Bear","Squirrel","Woodpecker"},
-	Halloween = {"Bat","Ghost","Reaper","Pumpkin","Lich","Dark Spriggan","Spider","Crow","Goblin"}
-}
-
-local function clearTraitVisuals(pet)
-	for _, v in ipairs(pet:GetDescendants()) do
-		for trait, list in pairs(traitGroups) do
-			for _, petName in ipairs(list) do
-				if string.find(string.lower(v.Name), string.lower(petName))
-					or string.find(string.lower(v.Name), string.lower(trait)) then
-					safeDestroy(v)
-				end
-			end
-		end
-	end
-end
-
---------------------------------------------------------
--- 🌩️ Xoá thời tiết và pop effect + files
---------------------------------------------------------
-local function clearWeatherAndTerrain()
-	local targets = {
-		Terrain:FindFirstChild("BigPopEffect"),
-		Terrain:FindFirstChild("MediumPopEffect"),
-		Terrain:FindFirstChild("PopEffect"),
-		WeatherVisuals
-	}
-	for _, fx in ipairs(targets) do
-		if fx then safeDestroy(fx) end
-	end
-
-	local weatherFolders = {
-		Workspace:FindFirstChild("WeatherFiles"),
-		Workspace:FindFirstChild("Weather"),
-		ReplicatedStorage:FindFirstChild("WeatherFiles"),
-		ReplicatedStorage:FindFirstChild("WeatherAssets"),
-		ReplicatedStorage:FindFirstChild("WeatherPresets"),
-		Lighting:FindFirstChild("WeatherFiles"),
-		Terrain:FindFirstChild("WeatherFiles"),
-	}
-	for _, folder in ipairs(weatherFolders) do
-		if folder then
-			for _, obj in ipairs(folder:GetChildren()) do
-				safeDestroy(obj)
-			end
-			safeDestroy(folder)
-		end
-	end
-
-	for _, obj in ipairs(Terrain:GetDescendants()) do
-		local n = string.lower(obj.Name)
-		if n:find("rain") or n:find("fog") or n:find("snow")
-		or n:find("lightning") or n:find("storm") or n:find("pop")
-		or n:find("weather") or obj:IsA("ParticleEmitter")
-		or obj:IsA("Beam") or obj:IsA("Trail") then
-			safeDestroy(obj)
-		end
-	end
-end
-
---------------------------------------------------------
--- 🧠 Smart whitelist pet của bạn
---------------------------------------------------------
-local function findMyPetsWhitelist(myFarm)
-	local whitelist = {}
-	local farmPivot = nil
-	pcall(function() farmPivot = myFarm:GetPivot().Position end)
-
-	if PetsFolder then
-		for _, petFolder in ipairs(PetsFolder:GetChildren()) do
-			for _, pet in ipairs(petFolder:GetChildren()) do
-				local petPos
-				pcall(function()
-					if pet.PrimaryPart then petPos = pet.PrimaryPart.Position
-					elseif pet:IsA("Part") then petPos = pet.Position end
-				end)
-				if petPos and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-					local playerPos = LocalPlayer.Character.HumanoidRootPart.Position
-					local distToPlayer = (playerPos - petPos).Magnitude
-					local distToFarm = farmPivot and (farmPivot - petPos).Magnitude or math.huge
-					if distToPlayer < 120 or distToFarm < 120 then
-						table.insert(whitelist, pet)
-						table.insert(whitelist, petFolder)
-					end
-				end
-			end
-		end
-	end
-	return whitelist
-end
-
---------------------------------------------------------
--- 🐾 Xoá pet người khác + mutation + trait effect
---------------------------------------------------------
-local function clearOtherPets(myFarm)
-	if not PetsFolder then return end
-	local keepList = findMyPetsWhitelist(myFarm)
-
-	for _, petFolder in ipairs(PetsFolder:GetChildren()) do
-		local isMine = false
-		for _, keep in ipairs(keepList) do
-			if petFolder == keep or petFolder:IsDescendantOf(keep) then
-				isMine = true
-				break
-			end
-		end
-		if isMine then
-			clearEffectsIn(petFolder)
-			clearMutationVisuals(petFolder)
-			clearTraitVisuals(petFolder)
-		else
-			safeDestroy(petFolder)
-		end
-	end
-end
-
---------------------------------------------------------
--- 🥚 Xoá trứng ở farm khác
---------------------------------------------------------
-local function clearOtherEggs(myFarm)
-	for _, farm in ipairs(FarmFolder:GetChildren()) do
-		local imp = farm:FindFirstChild("Important")
-		if imp and imp:FindFirstChild("Objects_Physical") then
-			local obj = imp.Objects_Physical
-			local egg = obj:FindFirstChild("PetEgg")
-			if egg then
-				if farm == myFarm then
-					clearEffectsIn(egg)
-				else
-					safeDestroy(egg)
-				end
-			end
-		end
-	end
-end
-
---------------------------------------------------------
--- 🌱 Xoá cây (Plants_Physical) của farm khác
---------------------------------------------------------
-local function clearOtherFarmsPlants(myFarm)
-	for _, farm in ipairs(FarmFolder:GetChildren()) do
-		if farm ~= myFarm then
-			local imp = farm:FindFirstChild("Important")
-			if imp and imp:FindFirstChild("Plants_Physical") then
-				for _, plantType in ipairs(imp.Plants_Physical:GetChildren()) do
-					for _, plant in ipairs(plantType:GetChildren()) do
-						safeDestroy(plant)
-					end
-				end
-			end
-		end
-	end
-end
-
---------------------------------------------------------
--- 🏡 Xoá toàn bộ farm người khác
---------------------------------------------------------
-local function clearOtherFarms(myFarm)
+local function removeOtherFarms(myFarm)
+	if not FarmFolder then return end
 	for _, farm in ipairs(FarmFolder:GetChildren()) do
 		if farm ~= myFarm then
 			safeDestroy(farm)
@@ -242,7 +48,79 @@ local function clearOtherFarms(myFarm)
 end
 
 --------------------------------------------------------
--- 🎨 Giảm đồ hoạ cực mạnh
+-- 🐾 Xoá toàn bộ pet (của bạn & người khác)
+--------------------------------------------------------
+local function removeAllPets()
+	if not PetsFolder then return end
+	for _, folder in ipairs(PetsFolder:GetChildren()) do
+		safeDestroy(folder)
+	end
+end
+
+--------------------------------------------------------
+-- 🥚 Giữ lại PetEgg trong farm bạn, xoá tất cả vật thể khác
+--------------------------------------------------------
+local function cleanMyFarm(myFarm)
+	if not myFarm then return end
+	local imp = myFarm:FindFirstChild("Important")
+	if not imp then return end
+	local obj = imp:FindFirstChild("Objects_Physical")
+	if not obj then return end
+
+	for _, item in ipairs(obj:GetChildren()) do
+		if item.Name ~= "PetEgg" then
+			safeDestroy(item)
+		end
+	end
+
+	-- Tắt effect trong PetEgg cho nhẹ
+	local egg = obj:FindFirstChild("PetEgg")
+	if egg then
+		for _, d in ipairs(egg:GetDescendants()) do
+			if d:IsA("ParticleEmitter") or d:IsA("Trail") or d:IsA("Beam")
+			or d:IsA("Smoke") or d:IsA("Fire") or d:IsA("Sparkles") then
+				pcall(function() d.Enabled = false end)
+			end
+		end
+	end
+end
+
+--------------------------------------------------------
+-- 🌩️ Xoá thời tiết, pop, weather
+--------------------------------------------------------
+local function removeWeather()
+	if WeatherVisuals then safeDestroy(WeatherVisuals) end
+
+	if Terrain then
+		local targets = {
+			"BigPopEffect",
+			"MediumPopEffect",
+			"PopEffect",
+			"Rain",
+			"Fog",
+			"Snow",
+			"Lightning",
+			"Storm"
+		}
+		for _, name in ipairs(targets) do
+			local fx = Terrain:FindFirstChild(name)
+			if fx then safeDestroy(fx) end
+		end
+
+		for _, obj in ipairs(Terrain:GetDescendants()) do
+			local n = obj.Name:lower()
+			if n:find("rain") or n:find("fog") or n:find("snow") or n:find("lightning")
+			or n:find("storm") or n:find("pop") or obj:IsA("ParticleEmitter")
+			or obj:IsA("Beam") or obj:IsA("Trail") or obj:IsA("Smoke")
+			or obj:IsA("Fire") or obj:IsA("Sparkles") then
+				safeDestroy(obj)
+			end
+		end
+	end
+end
+
+--------------------------------------------------------
+-- 🎨 Giảm đồ họa cực mạnh
 --------------------------------------------------------
 local function reduceGraphics()
 	pcall(function()
@@ -257,8 +135,8 @@ local function reduceGraphics()
 		Lighting.FogEnd = 1e6
 		for _, eff in ipairs(Lighting:GetChildren()) do
 			if eff:IsA("BloomEffect") or eff:IsA("SunRaysEffect")
-				or eff:IsA("DepthOfFieldEffect") or eff:IsA("BlurEffect")
-				or eff:IsA("ColorCorrectionEffect") then
+			or eff:IsA("DepthOfFieldEffect") or eff:IsA("BlurEffect")
+			or eff:IsA("ColorCorrectionEffect") then
 				safeDestroy(eff)
 			end
 		end
@@ -266,35 +144,17 @@ local function reduceGraphics()
 end
 
 --------------------------------------------------------
--- 🔁 Dọn realtime mỗi 5 giây
+-- 🧹 Thực thi toàn bộ
 --------------------------------------------------------
-task.spawn(function()
-	while task.wait(5) do
-		local myFarm = getMyFarm()
-		reduceGraphics()
-		clearWeatherAndTerrain()
-		if myFarm then
-			clearOtherFarmsPlants(myFarm)
-			clearOtherFarms(myFarm)
-			clearOtherPets(myFarm)
-			clearOtherEggs(myFarm)
-			clearEffectsIn(myFarm)
-		end
-	end
-end)
-
---------------------------------------------------------
--- 🏁 Chạy 1 lần khi load
---------------------------------------------------------
-local myFarm = getMyFarm()
 reduceGraphics()
-clearWeatherAndTerrain()
+removeAllPets()
+
+local myFarm = getMyFarm()
 if myFarm then
-	clearOtherFarmsPlants(myFarm)
-	clearOtherFarms(myFarm)
-	clearOtherPets(myFarm)
-	clearOtherEggs(myFarm)
-	clearEffectsIn(myFarm)
+	removeOtherFarms(myFarm)
+	cleanMyFarm(myFarm)
 end
 
-print("✅ CTHub SuperCleaner v14: Giữ farm bạn, xoá toàn bộ farm, cây, pet, weather, mutation & trait người khác.")
+removeWeather()
+
+print("✅ Xong! Chỉ còn lại farm của bạn và trứng PetEgg, không còn pet, thời tiết hay farm khác.")
