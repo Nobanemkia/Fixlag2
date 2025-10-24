@@ -1,5 +1,5 @@
 repeat task.wait() until game:IsLoaded()
-print("🌪️ CTHub SuperCleaner v16 khởi động... (Only your farm remains)")
+print("🌪️ CTHub SuperCleaner v17 khởi động... (Realtime Auto Clean)")
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -11,7 +11,9 @@ local PetsFolder = Workspace:FindFirstChild("PetsPhysical")
 local Terrain = Workspace:FindFirstChild("Terrain")
 local WeatherVisuals = Workspace:FindFirstChild("WeatherVisuals")
 
--- ✅ Safe destroy để không lỗi
+--------------------------------------------------------
+-- ✅ Safe destroy (chống lỗi)
+--------------------------------------------------------
 local function safeDestroy(obj)
 	pcall(function()
 		if obj and obj.Parent then obj:Destroy() end
@@ -19,9 +21,10 @@ local function safeDestroy(obj)
 end
 
 --------------------------------------------------------
--- 🌾 Tìm farm của bạn qua Owner
+-- 🌾 Xác định farm chính của bạn
 --------------------------------------------------------
 local function getMyFarm()
+	if not FarmFolder then return nil end
 	for _, farm in ipairs(FarmFolder:GetChildren()) do
 		local imp = farm:FindFirstChild("Important")
 		if imp and imp:FindFirstChild("Data") then
@@ -36,7 +39,7 @@ local function getMyFarm()
 end
 
 --------------------------------------------------------
--- 💨 Xoá tất cả farm khác
+-- 💨 Xoá farm người khác
 --------------------------------------------------------
 local function removeOtherFarms(myFarm)
 	if not FarmFolder then return end
@@ -58,7 +61,7 @@ local function removeAllPets()
 end
 
 --------------------------------------------------------
--- 🥚 Giữ lại PetEgg trong farm bạn, xoá tất cả vật thể khác
+-- 🥚 Giữ lại trứng farm bạn, xoá object khác
 --------------------------------------------------------
 local function cleanMyFarm(myFarm)
 	if not myFarm then return end
@@ -73,7 +76,6 @@ local function cleanMyFarm(myFarm)
 		end
 	end
 
-	-- Tắt effect trong PetEgg cho nhẹ
 	local egg = obj:FindFirstChild("PetEgg")
 	if egg then
 		for _, d in ipairs(egg:GetDescendants()) do
@@ -86,21 +88,15 @@ local function cleanMyFarm(myFarm)
 end
 
 --------------------------------------------------------
--- 🌩️ Xoá thời tiết, pop, weather
+-- 🌩️ Xoá thời tiết, effect, pop
 --------------------------------------------------------
 local function removeWeather()
 	if WeatherVisuals then safeDestroy(WeatherVisuals) end
 
 	if Terrain then
 		local targets = {
-			"BigPopEffect",
-			"MediumPopEffect",
-			"PopEffect",
-			"Rain",
-			"Fog",
-			"Snow",
-			"Lightning",
-			"Storm"
+			"BigPopEffect","MediumPopEffect","PopEffect",
+			"Rain","Fog","Snow","Lightning","Storm"
 		}
 		for _, name in ipairs(targets) do
 			local fx = Terrain:FindFirstChild(name)
@@ -144,17 +140,31 @@ local function reduceGraphics()
 end
 
 --------------------------------------------------------
--- 🧹 Thực thi toàn bộ
+-- 🔁 Vòng lặp realtime auto clean
 --------------------------------------------------------
+task.spawn(function()
+	while task.wait(3) do
+		local myFarm = getMyFarm()
+		reduceGraphics()
+		removeAllPets()
+		removeWeather()
+		if myFarm then
+			removeOtherFarms(myFarm)
+			cleanMyFarm(myFarm)
+		end
+	end
+end)
+
+--------------------------------------------------------
+-- 🏁 Khởi động lần đầu
+--------------------------------------------------------
+local myFarm = getMyFarm()
 reduceGraphics()
 removeAllPets()
-
-local myFarm = getMyFarm()
+removeWeather()
 if myFarm then
 	removeOtherFarms(myFarm)
 	cleanMyFarm(myFarm)
 end
 
-removeWeather()
-
-print("✅ Xong! Chỉ còn lại farm của bạn và trứng PetEgg, không còn pet, thời tiết hay farm khác.")
+print("✅ CTHub SuperCleaner v17: realtime active — chỉ giữ farm của bạn, trứng của bạn, mọi thứ khác auto xoá.")
