@@ -1,5 +1,5 @@
 repeat task.wait() until game:IsLoaded()
-print("🎆 CTHub SuperCleaner v19 — realtime cleaner (Farm + Pet + Weather + Firework + BeanstalkAssets)")
+print("⚡ CTHub SuperCleaner v20 — realtime cleaner (Farm + Pet + Weather + Firework + Beanstalk + Lightning + Thunder)")
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -50,9 +50,7 @@ end
 local function removeOtherFarms(myFarm)
 	if not FarmFolder then return end
 	for _, farm in ipairs(FarmFolder:GetChildren()) do
-		if farm ~= myFarm then
-			safeDestroy(farm)
-		end
+		if farm ~= myFarm then safeDestroy(farm) end
 	end
 end
 
@@ -99,7 +97,7 @@ end
 local function removeWeather()
 	if WeatherVisuals then safeDestroy(WeatherVisuals) end
 	if Terrain then
-		local targets = {"BigPopEffect","MediumPopEffect","PopEffect","Rain","Fog","Snow","Lightning","Storm"}
+		local targets = {"BigPopEffect","MediumPopEffect","PopEffect","Rain","Fog","Snow","Lightning","Storm","Thunder"}
 		for _, name in ipairs(targets) do
 			local fx = Terrain:FindFirstChild(name)
 			if fx then safeDestroy(fx) end
@@ -108,9 +106,9 @@ local function removeWeather()
 		for _, obj in ipairs(Terrain:GetDescendants()) do
 			local n = obj.Name:lower()
 			if n:find("rain") or n:find("fog") or n:find("snow") or n:find("lightning")
-			or n:find("storm") or n:find("pop") or obj:IsA("ParticleEmitter")
-			or obj:IsA("Beam") or obj:IsA("Trail") or obj:IsA("Smoke")
-			or obj:IsA("Fire") or obj:IsA("Sparkles") then
+			or n:find("storm") or n:find("thunder") or n:find("pop")
+			or obj:IsA("ParticleEmitter") or obj:IsA("Beam") or obj:IsA("Trail")
+			or obj:IsA("Smoke") or obj:IsA("Fire") or obj:IsA("Sparkles") then
 				safeDestroy(obj)
 			end
 		end
@@ -118,29 +116,58 @@ local function removeWeather()
 end
 
 --------------------------------------------------------
--- 🎆 Remove fireworks from JulyAssets & BeanstalkAssets
+-- ⚡ Remove thunder, lightning & lighting effects
+--------------------------------------------------------
+local function removeLightningAndThunder()
+	-- Xoá các hiệu ứng lightning / thunder trong Workspace
+	for _, obj in ipairs(Workspace:GetDescendants()) do
+		local n = obj.Name:lower()
+		if n:find("lightning") or n:find("thunder") or n:find("strike") or n:find("flash")
+		or n:find("storm") or n:find("zap") or n:find("electro") then
+			safeDestroy(obj)
+		end
+		if obj:IsA("ParticleEmitter") or obj:IsA("Beam") or obj:IsA("Explosion") then
+			safeDestroy(obj)
+		end
+	end
+
+	-- Xoá lighting effect trong Lighting
+	for _, eff in ipairs(Lighting:GetChildren()) do
+		if eff:IsA("BloomEffect") or eff:IsA("SunRaysEffect")
+		or eff:IsA("DepthOfFieldEffect") or eff:IsA("BlurEffect")
+		or eff:IsA("ColorCorrectionEffect") or eff:IsA("Atmosphere")
+		or eff:IsA("Sky") then
+			safeDestroy(eff)
+		end
+	end
+end
+
+--------------------------------------------------------
+-- 🎆 Remove fireworks (JulyAssets + BeanstalkAssets)
 --------------------------------------------------------
 local function removeFireworksAndBeanstalk()
-	-- 🔥 JulyAssets
+	-- JulyAssets
 	if JulyAssets then
 		for _, v in ipairs(JulyAssets:GetDescendants()) do
 			local n = v.Name:lower()
 			if n:find("firework") or n:find("spark") or n:find("explosion")
-			or n:find("trail") or n:find("smoke") or n:find("flash") or n:find("blast")
-			or v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam")
-			or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") or v:IsA("Explosion") then
+			or n:find("trail") or n:find("smoke") or n:find("flash")
+			or n:find("blast") or v:IsA("ParticleEmitter") or v:IsA("Trail")
+			or v:IsA("Beam") or v:IsA("Smoke") or v:IsA("Fire")
+			or v:IsA("Sparkles") or v:IsA("Explosion") then
 				safeDestroy(v)
 			end
 		end
 	end
 
-	-- 🌱 BeanstalkAssets
+	-- BeanstalkAssets
 	if BeanstalkAssets then
 		for _, v in ipairs(BeanstalkAssets:GetDescendants()) do
 			local n = v.Name:lower()
 			if n:find("firework") or n:find("spark") or n:find("explosion")
 			or n:find("trail") or n:find("smoke") or n:find("flash")
-			or n:find("blast") or n:find("particle") or n:find("fx") then
+			or n:find("blast") or n:find("fx") or n:find("lightning")
+			or n:find("thunder") or n:find("beam") then
 				safeDestroy(v)
 			elseif v:IsA("ParticleEmitter") or v:IsA("Trail")
 			or v:IsA("Beam") or v:IsA("Smoke") or v:IsA("Fire")
@@ -152,7 +179,7 @@ local function removeFireworksAndBeanstalk()
 end
 
 --------------------------------------------------------
--- 🎨 Reduce graphics
+-- 🎨 Reduce graphics to minimum
 --------------------------------------------------------
 local function reduceGraphics()
 	pcall(function()
@@ -165,13 +192,6 @@ local function reduceGraphics()
 		Lighting.Brightness = 1
 		Lighting.FogStart = 1e5
 		Lighting.FogEnd = 1e6
-		for _, eff in ipairs(Lighting:GetChildren()) do
-			if eff:IsA("BloomEffect") or eff:IsA("SunRaysEffect")
-			or eff:IsA("DepthOfFieldEffect") or eff:IsA("BlurEffect")
-			or eff:IsA("ColorCorrectionEffect") then
-				safeDestroy(eff)
-			end
-		end
 	end)
 end
 
@@ -184,6 +204,7 @@ task.spawn(function()
 		reduceGraphics()
 		removeAllPets()
 		removeWeather()
+		removeLightningAndThunder()
 		removeFireworksAndBeanstalk()
 		if myFarm then
 			removeOtherFarms(myFarm)
@@ -193,16 +214,17 @@ task.spawn(function()
 end)
 
 --------------------------------------------------------
--- 🏁 Initial clean
+-- 🏁 Initial cleanup
 --------------------------------------------------------
 local myFarm = getMyFarm()
 reduceGraphics()
 removeAllPets()
 removeWeather()
+removeLightningAndThunder()
 removeFireworksAndBeanstalk()
 if myFarm then
 	removeOtherFarms(myFarm)
 	cleanMyFarm(myFarm)
 end
 
-print("✅ CTHub SuperCleaner v19: realtime full clean — giữ farm bạn + PetEgg, xoá pet, weather, fireworks (July + Beanstalk).")
+print("✅ CTHub SuperCleaner v20: realtime full clean — giữ farm bạn + PetEgg, xoá pet, farm khác, weather, fireworks, thunder & lighting.")
